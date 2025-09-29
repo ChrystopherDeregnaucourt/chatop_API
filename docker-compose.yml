@@ -1,0 +1,17 @@
+version: '3.9'
+services:
+  mysql:
+    image: mysql:8.3
+    container_name: chatop-mysql
+    environment:
+      MYSQL_DATABASE: chatop
+      MYSQL_USER: chatop
+      MYSQL_PASSWORD: chatop
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+volumes:
+  mysql_data:
