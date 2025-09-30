@@ -1,5 +1,7 @@
 package com.chatop.api.storage;
 
+// Service responsable du stockage physique des fichiers (upload, suppression, lecture).
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.core.io.Resource;
@@ -18,34 +20,45 @@ import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import java.util.UUID;
 
+// @Slf4j fournit un logger pour tracer les opérations de stockage.
+// @Service expose cette classe comme bean Spring injectible.
 @Slf4j
 @Service
 public class FileStorageService {
 
+    // Répertoire racine où les fichiers sont conservés.
     private final Path rootLocation;
+    // Accès aux paramètres de configuration (chemin, URL publique).
     private final FileStorageProperties properties;
 
     public FileStorageService(FileStorageProperties properties) {
         this.properties = properties;
+        // On normalise le chemin pour éviter les ambiguïtés et garantir la sécurité.
         this.rootLocation = Paths.get(properties.getLocation()).toAbsolutePath().normalize();
         try {
+            // On s'assure que le dossier existe au démarrage.
             Files.createDirectories(this.rootLocation);
         } catch (IOException e) {
             throw new IllegalStateException("Could not create storage directory", e);
         }
     }
 
+    // Enregistre un fichier reçu depuis une requête HTTP et renvoie son nom stocké.
     public String store(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded file is empty");
         }
 
+        // On récupère le nom d'origine pour conserver l'extension et logguer des informations utiles.
         String originalFilename = Objects.requireNonNullElse(file.getOriginalFilename(), "file");
         String extension = FilenameUtils.getExtension(originalFilename);
+        // Nettoyage de l'extension pour empêcher l'injection de caractères spéciaux dans le nom du fichier.
         String sanitizedExtension = extension != null && !extension.isBlank() ? "." + extension.replaceAll("[^a-zA-Z0-9]", "") : "";
+        // Utilisation d'un UUID pour éviter toute collision de noms de fichiers.
         String storedFilename = UUID.randomUUID() + sanitizedExtension;
         Path destinationFile = this.rootLocation.resolve(storedFilename).normalize();
 
+        // Protection contre les attaques de traversal : on vérifie que le fichier reste dans le répertoire autorisé.
         if (!destinationFile.getParent().equals(this.rootLocation)) {
             throw new IllegalArgumentException("Cannot store file outside of the designated directory");
         }
@@ -60,6 +73,7 @@ public class FileStorageService {
         return storedFilename;
     }
 
+    // Supprime un fichier en ignorant silencieusement les noms vides.
     public void delete(String storedFilename) {
         if (!StringUtils.hasText(storedFilename)) {
             return;
@@ -72,6 +86,7 @@ public class FileStorageService {
         }
     }
 
+    // Charge un fichier sous forme de Resource pour qu'il puisse être renvoyé dans une réponse HTTP.
     public Resource loadAsResource(String storedFilename) {
         try {
             Path file = rootLocation.resolve(storedFilename).normalize();
@@ -85,6 +100,7 @@ public class FileStorageService {
         }
     }
 
+    // Détermine le type MIME du fichier pour définir l'entête Content-Type de la réponse HTTP.
     public String getContentType(Resource resource) {
         try {
             String detected = Files.probeContentType(Path.of(resource.getURI()));
@@ -94,6 +110,7 @@ public class FileStorageService {
         }
     }
 
+    // Construit l'URL publique permettant d'accéder au fichier.
     public String buildPublicUrl(String storedFilename) {
         if (!StringUtils.hasText(storedFilename)) {
             return null;

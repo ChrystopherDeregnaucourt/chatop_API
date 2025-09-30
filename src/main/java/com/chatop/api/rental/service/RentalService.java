@@ -1,5 +1,7 @@
 package com.chatop.api.rental.service;
 
+// Service métier encapsulant les règles de gestion des locations.
+
 import com.chatop.api.common.dto.PageResponse;
 import com.chatop.api.common.exception.BadRequestException;
 import com.chatop.api.common.exception.ResourceNotFoundException;
@@ -20,12 +22,17 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 
+// @Service signale à Spring que cette classe contient la logique métier.
 @Service
 public class RentalService {
 
+    // Accès aux données des locations.
     private final RentalRepository rentalRepository;
+    // Permet de récupérer les utilisateurs (propriétaires).
     private final UserService userService;
+    // Gestion du stockage des photos.
     private final FileStorageService fileStorageService;
+    // Conversion entité -> DTO.
     private final RentalMapper rentalMapper;
 
     public RentalService(RentalRepository rentalRepository,
@@ -38,6 +45,7 @@ public class RentalService {
         this.rentalMapper = rentalMapper;
     }
 
+    // Lecture paginée des locations. readOnly = true optimise les transactions pour les opérations de lecture.
     @Transactional(readOnly = true)
     public PageResponse<RentalResponse> list(Pageable pageable) {
         Page<Rental> rentals = rentalRepository.findAll(pageable);
@@ -47,11 +55,13 @@ public class RentalService {
         return new PageResponse<>(content, rentals.getNumber(), rentals.getSize(), rentals.getTotalElements(), rentals.getTotalPages());
     }
 
+    // Récupère une annonce précise ou lève une erreur 404 si elle n'existe pas.
     @Transactional(readOnly = true)
     public RentalResponse getById(Long id) {
         return rentalMapper.toResponse(getEntity(id));
     }
 
+    // Crée une nouvelle location pour un propriétaire identifié par son email.
     @Transactional
     public RentalResponse create(RentalRequest request, String ownerEmail) {
         if (request.getPicture() == null || request.getPicture().isEmpty()) {
@@ -71,6 +81,7 @@ public class RentalService {
         return rentalMapper.toResponse(rental);
     }
 
+    // Met à jour une location existante après vérification des droits du propriétaire.
     @Transactional
     public RentalResponse update(Long id, RentalRequest request, String ownerEmail) {
         Rental rental = getEntity(id);
@@ -93,6 +104,7 @@ public class RentalService {
         return rentalMapper.toResponse(rental);
     }
 
+    // Méthode utilitaire réutilisable pour charger une entité Rental.
     @Transactional(readOnly = true)
     public Rental getEntity(Long id) {
         return rentalRepository.findById(id)
