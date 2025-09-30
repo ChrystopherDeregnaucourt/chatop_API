@@ -1,5 +1,7 @@
 package com.chatop.api.message.service;
 
+// Service métier pour la création des messages adressés aux propriétaires.
+
 import com.chatop.api.message.dto.MessageRequest;
 import com.chatop.api.message.dto.MessageResponse;
 import com.chatop.api.message.model.Message;
@@ -12,11 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+// @Service pour l'enregistrer dans le contexte Spring.
 @Service
 public class MessageService {
 
+    // Repository pour persister les messages.
     private final MessageRepository messageRepository;
+    // Permet de vérifier l'identité de l'utilisateur authentifié et de récupérer ses informations.
     private final UserService userService;
+    // Sert à vérifier l'existence de la location ciblée.
     private final RentalService rentalService;
 
     public MessageService(MessageRepository messageRepository,
@@ -27,6 +33,7 @@ public class MessageService {
         this.rentalService = rentalService;
     }
 
+    // Crée un message après avoir validé que l'utilisateur authentifié correspond bien à celui mentionné dans la requête.
     @Transactional
     public MessageResponse create(MessageRequest request, String authenticatedEmail) {
         User authenticatedUser = userService.getByEmail(authenticatedEmail);
